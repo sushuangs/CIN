@@ -57,6 +57,8 @@ class Network(nn.Module):
         self.img_w_folder_test = path_in['img_w_folder_test']
         self.time_now_NewExperiment = path_in['time_now_NewExperiment']
 
+        self.best_val_score = -10000
+        self.patient = 0
 
     def train(self, train_data, current_epoch):
         logging.info('--------------------------------------------------------\n')
@@ -136,10 +138,10 @@ class Network(nn.Module):
                 self.scheduler.step()
                 self.Lr_current = self.scheduler.get_last_lr()[0]
 
-            # Checkpoint
-            if self.current_epoch % self.opt['train']['checkpoint_per_epoch'] == 0:
-                logging.info('Checkpoint: Saving cinNets and training states.')
-                self.Checkpoint.save(self.cinNet, self.current_step, self.current_epoch, 'cinNet')
+            # # Checkpoint
+            # if self.current_epoch % self.opt['train']['checkpoint_per_epoch'] == 0:
+            #     logging.info('Checkpoint: Saving cinNets and training states.')
+            #     self.Checkpoint.save(self.cinNet, self.current_step, self.current_epoch, 'cinNet')
 
             # write losses
             utils.mkdir(self.loss_w_folder)
@@ -228,6 +230,12 @@ class Network(nn.Module):
                 #
                 BitWise_AvgErr1_mean    = utils.func_mean_filter_None(BitWise_AvgErr1_mean, BitWise_AvgErr1, 'add')
                 BitWise_AvgErr2_mean    = utils.func_mean_filter_None(BitWise_AvgErr2_mean, BitWise_AvgErr2, 'add')
+
+            # Checkpoint
+            if self.best_val_score < psnr_wm2co_mean/val_step:
+                self.best_val_score = psnr_wm2co_mean/val_step
+                logging.info('Checkpoint: Saving cinNets and training states.')
+                self.Checkpoint.save(self.cinNet, self.current_step, self.current_epoch, psnr_wm2co_mean/val_step, 'cinNet')
 
             # logging mean psnr
             print_BitWise_AvgErr1_mean    = utils.func_mean_filter_None(BitWise_AvgErr1_mean, val_step, 'div')

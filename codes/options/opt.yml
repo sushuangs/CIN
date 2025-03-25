@@ -1,8 +1,8 @@
 #
-train/test: test      # train or test
+train/test: train      # train or test
 
 #
-subfolder:      # str or None
+subfolder: gtos_I      # str or None
 
 
 #
@@ -11,9 +11,9 @@ train:
   manual_seed: 
   device_ids: [0]
   os_environ: '0'
-  batch_size: 32
+  batch_size: 16
   num_workers: 16
-  epoch: 50
+  epoch: 20
   set_start_epoch: 1
   start_step: 1
   # log
@@ -21,7 +21,7 @@ train:
   logTest_per_step: 5
   # step
   val:
-    per_epoch: 5
+    per_epoch: 1
     logs_per_step: 10
   #
   checkpoint_per_epoch: 1
@@ -36,7 +36,7 @@ train:
   resume: 
     one_pth:   true
     Partial:   true      # resume saved partial weight, parameters no saved in .pth are automatically initialized 
-    Empty:               # resume None
+    Empty:     true      # resume None
 
 
 
@@ -57,14 +57,14 @@ loss:
   #
   lamd:  # lw[Rec, Enc, Msg]
     # 
-    milestones_Rec: [100000] 
-    Rec: [0] 
+    milestones_Rec: [500, 500, 1000000] 
+    Rec: [1, 1, 0] 
     #
-    milestones_Eec: [100000] 
-    Eec: [1]
+    milestones_Eec: [500, 500, 1000000] 
+    Eec: [1, 1, 1]
     #
-    milestones_Msg: [1000000] 
-    Msg: [1]
+    milestones_Msg: [500, 500, 1000000] 
+    Msg: [0.1, 0.01, 0.01]
   #
   type:
     TypeRecImg: 'l2'   #  l1 \ l2
@@ -78,7 +78,7 @@ noise:
   StrengthFactor:
     S: 1
   #
-  option:   'Identity'
+  option: 'Identity' #'Combined'
   #
   Identity:
   #
@@ -151,29 +151,29 @@ noise:
 #
 path:
   # logs
-  logs_folder:        '.../watermarking_CIN/experiments/experiment_'
+  logs_folder:        '../watermarking_'
   folder_temp:
 
   # coco2017
-  train_folder:       '.../coco2017/train/train_class'
-  test_folder:        '.../coco2017/val/val_class'
+  train_folder:       '/data/experiment/data/gtos128_500/train'
+  test_folder:        '/data/experiment/data/gtos128_500/val'
   #
-  resume_state_1pth:  '.../pth/cinNet&nsmNet.pth'
+  resume_state_1pth:  '/data/experiment/model/CIN/watermarking_CIN/experiments/experiment_CIN/demo/-2025-02-26-15:39-train/path_checkpoint/epoch-1_step-613-cinNet.pth'
 
 
 
 #
 datasets:
   #
-  nDatasets: 
-    num: 10000  #10600
-    nTrain: 0.98       #    nDatasets x nTrain
-    nval: 0.02         #    nDatasets x (1-nTrain)
-  #
-  test:
-    num: 1000   # coco
-    # num: 100      # div2k
-  #
+  # nDatasets: 
+  #   num: 10000  #10600
+  #   nTrain: 0.98       #    nDatasets x nTrain
+  #   nval: 0.02         #    nDatasets x (1-nTrain)
+  # #
+  # test:
+  #   num: 1000   # coco
+  #   # num: 100      # div2k
+  # #
   msg:              # np.random.choice([ , ])
     mod_a: true        # [0, 1]
     mod_b: False         # [-1, 1]

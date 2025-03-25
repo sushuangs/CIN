@@ -28,26 +28,34 @@ from PIL import Image
 
 #-----------------------------------------------------------------------------
 class WM_Dataset(Dataset):
-    def __init__(self, opt):
+    def __init__(self, opt, mode ='train'):
         super(WM_Dataset, self).__init__()
         # train and val
-        if opt['train/test'] == 'train':
-            self.num_of_load = opt['datasets']['nDatasets']['num']
-            path = opt['path']['train_folder']
+        if mode == 'train':
+            self.path = opt['path']['train_folder']
         else:   # test only
-            self.num_of_load = opt['datasets']['test']['num']
-            path = opt['path']['test_folder']
-        #
-        imgs=os.listdir(path)
-        self.imgs=[os.path.join(path,k) for k in imgs]
+            self.path = opt['path']['test_folder']
+
+        self.classes = [d.name for d in os.scandir(self.path) if d.is_dir()]
+        self.imgs= self._make_dataset()
         self.input_transforms = transforms.Compose([
-            transforms.CenterCrop((opt['datasets']['H'], opt['datasets']['W'])),
             transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
             ])
+
+    def _make_dataset(self):
+        samples = []
+        for class_name in self.classes:
+            class_dir = os.path.join(self.path, class_name)
+            
+            for filename in os.listdir(class_dir):
+                path = os.path.join(class_dir, filename)
+                if os.path.isfile(path):
+                    samples.append(path)
         
+        return samples
+
     def __getitem__(self, index):
-        #
         data = self.imgs[index]
         img = Image.open(data)   
         img = img.convert('RGB') 
@@ -55,26 +63,23 @@ class WM_Dataset(Dataset):
         return img
 
     def __len__(self):
-        return self.num_of_load
+        return len(self.imgs)
 
 
 def train_val_loaders(opt):
     # Dataset init
-    data_input = WM_Dataset(opt)
-    # Split dataset
-    train_size = int(opt['datasets']['nDatasets']['nTrain'] * len(data_input))
-    test_size = len(data_input) - train_size
-    train_dataset, test_dataset = torch.utils.data.random_split(data_input, [train_size, test_size])
+    train_dataset = WM_Dataset(opt, mode='train')
+    val_dataset = WM_Dataset(opt, mode='val')
     # Dataloader
     train_loader = DataLoader(dataset = train_dataset, batch_size=opt['train']['batch_size'], shuffle=True, num_workers=opt['train']['num_workers'])
-    val_loader = DataLoader(dataset = test_dataset,  batch_size=opt['train']['batch_size'], shuffle=False, num_workers=opt['train']['num_workers'])
+    val_loader = DataLoader(dataset = val_dataset,  batch_size=opt['train']['batch_size'], shuffle=False, num_workers=opt['train']['num_workers'])
     
     return train_loader, val_loader
 
 
 def test_loader(opt):
     # Dataset init
-    data_input = WM_Dataset(opt)
+    data_input = WM_Dataset(opt, mode='val')
     # Dataloader
     test_loader = DataLoader(dataset = data_input,  batch_size=opt['train']['batch_size'], shuffle=False, num_workers=opt['train']['num_workers'])
     return test_loader

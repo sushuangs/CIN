@@ -14,9 +14,9 @@ class Checkpoint(nn.Module):
         self.opt = opt
         utils.mkdir(self.path)
 
-    def save(self, model, current_step, epoch, model_name):
+    def save(self, model, current_step, epoch, psnr, model_name):
         state = {"{}".format(model_name): model.state_dict()}
-        save_filename = 'epoch-{}_step-{}-{}.pth'.format(epoch, current_step, model_name)
+        save_filename = 'epoch-{}_step-{}-{}_psnr-{}.pth'.format(epoch, current_step, model_name, psnr)
         save_path = os.path.join(self.path, save_filename)
         torch.save(state, save_path)
 
