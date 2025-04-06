@@ -423,3 +423,4 @@ class Network(nn.Module):
             # resume CIN.NSM
             resume_state_nsmNet = torch.load(self.opt['path']['resume_state_nsmNet'], map_location=lambda storage, loc: storage.cuda(device_id))
             self.cinNet.module.nsm_model = self.Checkpoint.resume_training(self.cinNet.module.nsm_model, 'nsmNet', resume_state_nsmNet)  
+

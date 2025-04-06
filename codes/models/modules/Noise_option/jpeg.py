@@ -15,7 +15,7 @@ class JpegTest(nn.Module):
 		self.Q = Q
 		self.subsample = subsample
 		self.path = path
-		if not os.path.exists(path): os.mkdir(path)
+		# if not os.path.exists(path): os.mkdir(path)
 
 	def get_path(self):
 		return self.path + ''.join(random.sample(string.ascii_letters + string.digits, 16)) + ".jpg"

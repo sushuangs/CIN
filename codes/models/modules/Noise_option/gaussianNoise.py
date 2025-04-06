@@ -10,23 +10,16 @@ class GaussianNoise(nn.Module):
         super(GaussianNoise, self).__init__()
         # gaussian
         self.mean = opt['noise']['GaussianNoise']['mean']
-        self.variance =  opt['noise']['GaussianNoise']['variance']
-        self.amplitude =  opt['noise']['GaussianNoise']['amplitude']
-        self.p = opt['noise']['GaussianNoise']['p']
+        self.min_val =  opt['noise']['GaussianNoise']['min_variance']
+        self.max_val =  opt['noise']['GaussianNoise']['max_variance']
         self.device = device
 
+    def gaussian_noise(self, image, mean, var):
+        noise = torch.Tensor(np.random.normal(mean, var, image.shape)/128.).to(self.device)
+        out = image + noise
+        return out
+
     def forward(self, encoded, cover_img=None):
-        if random.uniform(0, 1) < self.p:
-            #
-            b, c, h, w = encoded.shape
-            #
-            Noise = self.amplitude * torch.Tensor(np.random.normal(loc=self.mean, scale=self.variance, size=(b, 1, h, w))).to(self.device)
-            Noise = Noise.repeat(1, c, 1, 1)
-            #
-            img_ = Noise + encoded
+        self.var = np.random.rand() * (self.max_val - self.min_val) + self.min_val
+        return self.gaussian_noise(encoded, self.mean, self.var)
 
-            return img_
-
-        else:
-            print('Gaussian noise error!')
-            exit()

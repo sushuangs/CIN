@@ -102,6 +102,7 @@ def main():
     
     #
     network = Network(opt, device, path_in)
+    # network.best_val_score = 56.494820946141296
 
 
 
