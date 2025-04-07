@@ -8,17 +8,65 @@ from torch import nn
 import numpy as np
 from thop import profile
 from PIL import Image
+import time
 import shutil
+import kornia
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
-import time
-
+    ############
+    #your model#
+    #   start  #
+    ############
 import utils.utils as utils
 from utils.yml import parse_yml, dict_to_nonedict, set_random_seed
 from utils.yml import dict2str
 from models.Network import Network
 
+    ############
+    #your model#
+    #    end   #
+    ############
+
+def psnr_ssim_acc(image, H_img, L_img):
+    # psnr
+    H_psnr = kornia.metrics.psnr(
+        ((image + 1) / 2).clamp(0, 1),
+        ((H_img.detach() + 1) / 2).clamp(0, 1),
+        1,
+    )
+    L_psnr = kornia.metrics.psnr(
+        ((image + 1) / 2).clamp(0, 1),
+        ((L_img.detach() + 1) / 2).clamp(0, 1),
+        1,
+    )
+    # ssim
+    H_ssim = kornia.metrics.ssim(
+        ((image + 1) / 2).clamp(0, 1),
+        ((H_img.detach() + 1) / 2).clamp(0, 1),
+        window_size=11,
+    ).mean()
+    L_ssim = kornia.metrics.ssim(
+        ((image + 1) / 2).clamp(0, 1),
+        ((L_img.detach() + 1) / 2).clamp(0, 1),
+        window_size=11,
+    ).mean()
+    return H_psnr, L_psnr, H_ssim, L_ssim
+
+    ############
+    #your model#
+    #   start  #
+    ############
+def model_from_checkpoint(hidden_net, checkpoint):
+    """ Restores the hidden_net object from a checkpoint object """
+    hidden_net.encoder_decoder.load_state_dict(checkpoint['enc-dec-model'])
+    hidden_net.optimizer_enc_dec.load_state_dict(checkpoint['enc-dec-optim'])
+    hidden_net.discriminator.load_state_dict(checkpoint['discrim-model'])
+    hidden_net.optimizer_discrim.load_state_dict(checkpoint['discrim-optim'])
+    ############
+    #your model#
+    #    end   #
+    ############
 
 class ImageProcessingDataset(Dataset):
     def __init__(self, root_dir):
@@ -31,6 +79,7 @@ class ImageProcessingDataset(Dataset):
             transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         ])
         
+
         for root, _, files in os.walk(root_dir):
             rel_dir = os.path.relpath(root, root_dir)
             for f in files:
@@ -61,50 +110,20 @@ class ImageProcessingDataset(Dataset):
             print(f"Error loading {img_path}: {str(e)}")
             return None, idx
 
-def batch_process(model, dataloader, output_root, device):
 
-    denormalize = transforms.Compose([
-        transforms.Normalize(mean=[-1, -1, -1], std=[2, 2, 2]),
-    ])
-
-    with torch.no_grad(), tqdm(total=len(dataloader)) as pbar:
-        for batch in dataloader:
-            inputs, indices, message = batch
-            
-            valid_inputs = inputs.to(device)
-            valid_indices = indices
-            
-            if valid_inputs.shape[0] == 0:
-                continue
-
-            normalized, message = valid_inputs, message.to(device)
-            
-            # outputs = model(normalized, message)
-            outputs = model.encoder(normalized, message)
-            
-            denorm_outputs = denormalize(outputs.cpu().clamp(-1, 1))
-            
-            for tensor, idx in zip(denorm_outputs, valid_indices):
-                orig_path = dataset.image_paths[idx]
-                rel_dir = dataset.rel_dirs[idx]
-                filename = os.path.basename(orig_path)
-                
-                output_dir = os.path.join(output_root, rel_dir)
-                os.makedirs(output_dir, exist_ok=True)
-                
-                img = transforms.ToPILImage()(tensor)
-                img.save(os.path.join(output_dir, filename))
-            
-            pbar.update(1)
 
 if __name__ == "__main__":
-    input_root = "/data/experiment/data/gtos128_all/val" # val
-    output_root = "./CIN_35_gtos/val" # val
+
+    input_root = "/data/experiment/model/CIN/codes/CIN_35_gtos/val" # your path
     batch_size = 32
     num_workers = 4
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
+    ############
+    #your model#
+    #   start  #
+    ############
     name = str("CIN")
 
     yml_path = '../codes/options/opt.yml'
@@ -136,10 +155,37 @@ if __name__ == "__main__":
     network = Network(opt, device, path_in)
     model = network.cinNet.module
     model.eval()
+
+    ############
+    #your model#
+    #    end   #
+    ############
+
     dataset = ImageProcessingDataset(input_root)
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
     )
-    batch_process(model, dataloader, output_root, device)
+    bitwise_avg_err_history = []
+    with torch.no_grad():
+        for data in dataloader:
+            inputs, indices, message = data
+            
+            inputs = inputs.to(device)
+
+            message = message.to(device)
+
+            output_img = model.encoder(inputs, message)
+
+            _, decoded_messages, _, _ = model.train_val_decoder(output_img, "")
+
+            
+            decoded_rounded = decoded_messages.detach().cpu().numpy().round().clip(0, 1)
+            bitwise_avg_err = np.sum(np.abs(decoded_rounded - message.detach().cpu().numpy())) / (
+                    batch_size * 30)
+            
+            bitwise_avg_err_history.append(bitwise_avg_err)
+
+    acc = 1 - np.mean(bitwise_avg_err_history)
+    print('acc {:.4f}'.format(acc))
