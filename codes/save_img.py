@@ -136,6 +136,7 @@ if __name__ == "__main__":
     network = Network(opt, device, path_in)
     model = network.cinNet.module
     model.eval()
+
     dataset = ImageProcessingDataset(input_root)
     dataloader = DataLoader(
         dataset,
